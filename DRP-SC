@@ -1,0 +1,216 @@
+pragma solidity ^0.4.16;
+
+contract DataResourceProtectionSC{
+    bool public scstatus;
+	address public owner;
+    string public DTCName;    
+    mapping (address => uint) public dataownermId;
+    DOm[] public dataOwnerms;
+    string public IPFSHash;//the ipfs hash of the data sales agreement 
+	address public ABRaddress; 
+	address public DSSPaddress;	    
+	address public DOnaddress;
+    string public dataname;	
+	enum contractStatus{ WaitingforDOm, Terminated}
+	contractStatus public status;
+	enum DOmStatus{DOmPaid, DOnDeposited, ABRReceivedToken,SuccessfulEnterMarket, DisputeEnterMarket, DataRefused, RequestCompleted, Refunded}
+	uint public numberOfDOms;   
+    uint public timeliness = 5;//5 days
+	uint public deposit;
+	string public Xdatastoragehash;//the ipfs hash of the X data storage 
+	string public Ydatastoragehash;//the ipfs hash of the Y data storage 
+	mapping (address => DOmn) public dataownerms;	    	
+		
+    event DOmAdded(address DataOwnermAddress, string DataProduct, string DataNotes);
+    event DOmRemoved(address DOmAddress);
+    event StatusChanged(string Status);
+    event DOmPaid(address dataownerm, string info);    
+	event DOnDeposited(string info,address dataownerm);	
+    event tokenmGeneratedforABR(address arbitration, bytes32 tokenm, uint timestamp, uint duration);
+	event tokennGeneratedforABR(address arbitration, bytes32 tokenn, uint timestamp, uint duration);   
+    event successfulEnterMarket(address dataownerm);
+    event disputeEnterMarket(address dataownerm, string info);
+    event dataRefused(address dataownerm, string info);
+    event requestCompleted(address dataownerm, string info);	
+    event ABRIsVerifyingforDOm(address dataownerm, string info, bytes32 tokenm, bytes32 tokenn);
+    event refundDone(address dataownerm);
+	event DOmDataSimilar(address dataownerm, string info);		
+    event paymentSettled(address dataownerm, string info);
+    event refundBasedonDOmRequest(string info, address dataownerm);	
+  
+    struct DOm {
+		address dataownerm;
+	    string dataproduct;
+	    string datanotes;
+	    uint dataownermSince;
+    }
+    struct DOmn {
+        DOmStatus status;
+        address dataownerm;        
+        bytes32 tokenm;  
+		bytes32 tokenn; 
+    }
+    modifier OnlyOwner {
+        require (msg.sender == owner);
+	    _;
+    }
+	modifier NotOwner(){
+        require(msg.sender != owner);
+        _;
+    }
+    modifier OnlyDSSP(){
+        require(msg.sender == DSSPaddress);
+        _;
+    }
+	modifier NotDSSP(){
+        require(msg.sender != DSSPaddress);
+        _;
+    }
+    modifier OnlyABR(){
+        require(msg.sender == ABRaddress);
+        _;
+    }
+	modifier NotABR(){
+        require(msg.sender != ABRaddress);
+        _;
+    }
+	modifier OnlyDOn(){
+	    require(msg.sender == DOnaddress);
+        _;
+	}
+	modifier NotDOn(){
+        require(msg.sender != DOnaddress);
+        _;
+    }
+    modifier DOmPayment(){
+        require(msg.value == deposit);
+        _;
+    }       
+   
+	modifier DOnDeposit(){
+        require(msg.value == deposit);
+        _;
+    }	
+	
+    function DataResourceProtectionSC(string enterDTCName, string dataName) public {
+        owner = 0x70113e01419B976c2072c07f9Ed3A47bB23E44BC;
+		DSSPaddress = 0xDc90683afff86425c2EF0D878398441D33d190E8;
+		ABRaddress = 0x5B368D5a8FdfcFB94D336104Ff0125D92c9688D8;
+		DOnaddress = 0x30E46cdf20931888aC86c801a4f0E81d7a465B07;		
+		//DOmaddress = 0x54f0a8692dD2158F00886C653C05c1c3179D118d;		
+		deposit = 3 ether;
+		Xdatastoragehash = "QmPs6yd3GQ2iF9zUAYbtkobPSgEXR5vc7tNmKvgewp47S3";
+ 		Ydatastoragehash = "QmTpNgDUKosRBDBUCw7H8JhxVxfhztsjWZYqHzBHa3f6RQ";
+		IPFSHash = "QmcXvzzpsJrmvNzAdnRwYGi5CZTUz7Xd3EN2QVXhEGZ1wQ";
+	    scstatus = true;
+	    AddDOm(0,"","");
+	    DTCName = enterDTCName;
+		dataname = dataName;
+        numberOfDOms = 0;                	
+    }
+    function SCStatus (bool deactivate) OnlyOwner public {
+        if (deactivate)
+	    {scstatus = false;}
+	    StatusChanged ("The smart contract deactivated.");
+    }
+    function AddDOm (address dataOwnermAddress, string dataProduct, string dataNotes) OnlyOwner public {
+        require (scstatus = true);
+	    uint id = dataownermId[dataOwnermAddress];
+	    if (id == 0) {
+	    dataownermId[dataOwnermAddress] = dataOwnerms.length;
+	    id = dataOwnerms.length++;
+	}
+	    dataOwnerms[id] = DOm ({dataownerm: dataOwnermAddress, dataownermSince: now, dataproduct: dataProduct, datanotes: dataNotes});
+        DOmAdded (dataOwnermAddress, dataProduct, dataNotes);
+	    numberOfDOms++;
+    }
+    function RemoveDOm (address dataOwnermAddress) OnlyOwner public {
+        require (dataownermId[dataOwnermAddress] != 0);
+	    for (uint i = dataownermId[dataOwnermAddress]; i < dataOwnerms.length-1; i++){
+	    dataOwnerms[i] = dataOwnerms[i+1];
+	}
+	    delete dataOwnerms[dataOwnerms.length-1];
+	    dataOwnerms.length--;
+	    DOmRemoved(dataOwnermAddress);
+	    numberOfDOms--;
+    }	
+    function RequestSellData() NotOwner NotDSSP NotABR NotDOn DOmPayment public payable{//only the data owner m
+        require(status == contractStatus.WaitingforDOm);
+        dataownerms[msg.sender].status = DOmStatus.DOmPaid;
+        DOmPaid(msg.sender, "The data owner m has paid for the deposit.");        
+    } 	
+	function PayReportDeposit(address dataownerm) DOnDeposit public payable{//the data owner n pay the reporting deposit
+        require(msg.sender == DOnaddress); 			
+        if(dataownerms[dataownerm].status == DOmStatus.DOmPaid){          
+		  DOnDeposited("Reportng X data", dataownerm);		  	
+          dataownerms[dataownerm].status = DOmStatus.DOnDeposited;
+          DOmGenerateTokenm(dataownerm, timeliness);
+		  DOnGenerateTokenn(dataownerm, timeliness);
+        }	
+    }  
+	function DOmRefund(address dataownerm) internal{ //the smart contract internal call      
+		require(dataownerms[dataownerm].status == DOmStatus.DOmPaid || dataownerms[dataownerm].status == DOmStatus.SuccessfulEnterMarket);		
+        uint x = deposit;
+        dataownerm.transfer(x); 
+        dataownerms[dataownerm].status = DOmStatus.Refunded;
+        refundBasedonDOmRequest("The data owner m has been refunded.", dataownerm);
+    }
+	function DOmGenerateTokenm(address dataownerm,uint Timeliness) internal{ //the smart contract internal call 
+        require(dataownerms[dataownerm].status == DOmStatus.DOnDeposited);
+        bytes32 token = keccak256(dataownerm,ABRaddress,owner,dataname,block.timestamp,Timeliness);//the token for ABR
+        dataownerms[dataownerm].tokenm = token;
+        tokenmGeneratedforABR(dataownerm, token, block.timestamp, timeliness);        
+    }
+	function DOnGenerateTokenn(address dataownerm,uint Timeliness) internal{ //the smart contract internal call 
+        require(dataownerms[dataownerm].status == DOmStatus.DOnDeposited);
+        bytes32 token = keccak256(DOnaddress,ABRaddress,owner,dataname,block.timestamp,Timeliness);//the token for ABR
+        dataownerms[dataownerm].tokenn = token;
+        tokennGeneratedforABR(DOnaddress, token, block.timestamp, timeliness);
+        dataownerms[dataownerm].status = DOmStatus.ABRReceivedToken;//the arbitration institution received the token
+    }
+	function DTCComfirmedResult(address dataownerm) OnlyOwner public{        
+        require (dataownerms[dataownerm].status == DOmStatus.DOmPaid || dataownerms[dataownerm].status == DOmStatus.ABRReceivedToken);
+		if(dataownerms[dataownerm].status == DOmStatus.DOmPaid)//No comment
+        {          
+		    successfulEnterMarket(dataownerm);
+            dataownerms[dataownerm].status = DOmStatus.SuccessfulEnterMarket;
+            DOmRefund(dataownerm);		  		  
+        }
+        else if(dataownerms[dataownerm].status == DOmStatus.ABRReceivedToken)
+		{		    
+		  	disputeEnterMarket(dataownerm,"The data entry market trading dispute.");
+            dataownerms[dataownerm].status = DOmStatus.DisputeEnterMarket;
+            ABRIsVerifyingforDOm(dataownerm, "Token: ", dataownerms[dataownerm].tokenm, dataownerms[dataownerm].tokenn);            			
+        }		
+    }	
+	function DisputeResolution(address dataownerm, bool arbitrationResult) OnlyABR public payable{//the data entry market dispute resolution
+        require(dataownerms[dataownerm].status == DOmStatus.DisputeEnterMarket);	
+        if(arbitrationResult){//the data is similar
+           DOmDataSimilar(dataownerm, "The data owner m should be punished.");
+           dataownerms[dataownerm].status = DOmStatus.DataRefused;	
+		   Settlement(dataownerm);           
+        }
+        else{//the data is not similar
+          successfulEnterMarket(dataownerm);
+		  dataownerms[dataownerm].status = DOmStatus.SuccessfulEnterMarket;
+		  Penalty(dataownerm);		  
+        }
+    }
+    function Penalty(address dataownerm) internal{//the smart contract internal call
+	    require(dataownerms[dataownerm].status == DOmStatus.SuccessfulEnterMarket);
+		uint x = deposit/3;
+        dataownerm.transfer(x*3);//refund the data owner m		
+		DOnaddress.transfer(x*2);//refund the data owner n
+		ABRaddress.transfer(x);//the arbitration institution receives the fine
+        refundDone(dataownerm);                        
+	} 	
+	function Settlement(address dataownerm) internal{//the smart contract internal call
+        require(dataownerms[dataownerm].status == DOmStatus.DataRefused);
+        uint x = deposit/3;
+        ABRaddress.transfer(x); //pay the arbitration institution
+        owner.transfer(x); //pay the data trading center
+		DOnaddress.transfer(x+x*3); //pay the data owner n and the refund
+        paymentSettled(dataownerm, "The data owner m has been penalized.");
+        dataownerms[dataownerm].status = DOmStatus.RequestCompleted;
+    }	
+}
