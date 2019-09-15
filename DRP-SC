@@ -26,14 +26,15 @@ contract DataResourceProtectionSC{
     event StatusChanged(string Status);
     event DOmPaid(address dataownerm, string info);    
 	event DOnDeposited(string info,address dataownerm);	
-    event tokenmGeneratedforABR(address arbitration, bytes32 tokenm, uint timestamp, uint duration);
-	event tokennGeneratedforABR(address arbitration, bytes32 tokenn, uint timestamp, uint duration);   
-    event successfulEnterMarket(address dataownerm);
-    event disputeEnterMarket(address dataownerm, string info);
+    event tokenxGeneratedforABR(address arbitration, bytes32 tokenx, uint timestamp, uint duration);
+	event tokenyGeneratedforABR(address arbitration, bytes32 tokeny, uint timestamp, uint duration);   
+    event accessToMarket(address dataownerm);
+    event disputeOfDataForSale(address dataownerm, string info);
     event dataRefused(address dataownerm, string info);
     event requestCompleted(address dataownerm, string info);	
-    event ABRIsVerifyingforDOm(address dataownerm, string info, bytes32 tokenm, bytes32 tokenn);
-    event refundDone(address dataownerm);
+    event ABRIsVerifyingforDOmData(address dataownerm, string info, bytes32 tokenx, bytes32 tokeny);
+    event penaltyDone(string info);
+	event refundDone(address dataownerm);
 	event DOmDataSimilar(address dataownerm, string info);		
     event paymentSettled(address dataownerm, string info);
     event refundBasedonDOmRequest(string info, address dataownerm);	
@@ -142,7 +143,7 @@ contract DataResourceProtectionSC{
 	function PayReportDeposit(address dataownerm) DOnDeposit public payable{//the data owner n pay the reporting deposit
         require(msg.sender == DOnaddress); 			
         if(dataownerms[dataownerm].status == DOmStatus.DOmPaid){          
-		  DOnDeposited("Reportng X data", dataownerm);		  	
+		  DOnDeposited("Reporting the X-data", dataownerm);		  	
           dataownerms[dataownerm].status = DOmStatus.DOnDeposited;
           DOmGenerateTokenm(dataownerm, timeliness);
 		  DOnGenerateTokenn(dataownerm, timeliness);
@@ -153,45 +154,45 @@ contract DataResourceProtectionSC{
         uint x = deposit;
         dataownerm.transfer(x); 
         dataownerms[dataownerm].status = DOmStatus.Refunded;
-        refundBasedonDOmRequest("The data owner m has been refunded.", dataownerm);
+        refundBasedonDOmRequest("The DOm has been refunded.", dataownerm);
     }
 	function DOmGenerateTokenm(address dataownerm,uint Timeliness) internal{ //the smart contract internal call 
         require(dataownerms[dataownerm].status == DOmStatus.DOnDeposited);
         bytes32 token = keccak256(dataownerm,ABRaddress,owner,dataname,block.timestamp,Timeliness);//the token for ABR
         dataownerms[dataownerm].tokenm = token;
-        tokenmGeneratedforABR(dataownerm, token, block.timestamp, timeliness);        
+        tokenxGeneratedforABR(dataownerm, token, block.timestamp, timeliness);        
     }
 	function DOnGenerateTokenn(address dataownerm,uint Timeliness) internal{ //the smart contract internal call 
         require(dataownerms[dataownerm].status == DOmStatus.DOnDeposited);
         bytes32 token = keccak256(DOnaddress,ABRaddress,owner,dataname,block.timestamp,Timeliness);//the token for ABR
         dataownerms[dataownerm].tokenn = token;
-        tokennGeneratedforABR(DOnaddress, token, block.timestamp, timeliness);
+        tokenyGeneratedforABR(DOnaddress, token, block.timestamp, timeliness);
         dataownerms[dataownerm].status = DOmStatus.ABRReceivedToken;//the arbitration institution received the token
     }
 	function DTCComfirmedResult(address dataownerm) OnlyOwner public{        
         require (dataownerms[dataownerm].status == DOmStatus.DOmPaid || dataownerms[dataownerm].status == DOmStatus.ABRReceivedToken);
 		if(dataownerms[dataownerm].status == DOmStatus.DOmPaid)//No comment
         {          
-		    successfulEnterMarket(dataownerm);
+		    accessToMarket(dataownerm);
             dataownerms[dataownerm].status = DOmStatus.SuccessfulEnterMarket;
             DOmRefund(dataownerm);		  		  
         }
         else if(dataownerms[dataownerm].status == DOmStatus.ABRReceivedToken)
 		{		    
-		  	disputeEnterMarket(dataownerm,"The data entry market trading dispute.");
+		  	disputeOfDataForSale(dataownerm,"The dispute of data-for-sale.");
             dataownerms[dataownerm].status = DOmStatus.DisputeEnterMarket;
-            ABRIsVerifyingforDOm(dataownerm, "Token: ", dataownerms[dataownerm].tokenm, dataownerms[dataownerm].tokenn);            			
+            ABRIsVerifyingforDOmData(dataownerm, "Token: ", dataownerms[dataownerm].tokenm, dataownerms[dataownerm].tokenn);            			
         }		
     }	
 	function DisputeResolution(address dataownerm, bool arbitrationResult) OnlyABR public payable{//the data entry market dispute resolution
         require(dataownerms[dataownerm].status == DOmStatus.DisputeEnterMarket);	
         if(arbitrationResult){//the data is similar
-           DOmDataSimilar(dataownerm, "The data owner m should be punished.");
+           DOmDataSimilar(dataownerm, "The DOm should be punished.");
            dataownerms[dataownerm].status = DOmStatus.DataRefused;	
 		   Settlement(dataownerm);           
         }
         else{//the data is not similar
-          successfulEnterMarket(dataownerm);
+          accessToMarket(dataownerm);
 		  dataownerms[dataownerm].status = DOmStatus.SuccessfulEnterMarket;
 		  Penalty(dataownerm);		  
         }
@@ -202,6 +203,7 @@ contract DataResourceProtectionSC{
         dataownerm.transfer(x*3);//refund the data owner m		
 		DOnaddress.transfer(x*2);//refund the data owner n
 		ABRaddress.transfer(x);//the arbitration institution receives the fine
+		penaltyDone("The DOn has been penalized.");
         refundDone(dataownerm);                        
 	} 	
 	function Settlement(address dataownerm) internal{//the smart contract internal call
@@ -210,7 +212,7 @@ contract DataResourceProtectionSC{
         ABRaddress.transfer(x); //pay the arbitration institution
         owner.transfer(x); //pay the data trading center
 		DOnaddress.transfer(x+x*3); //pay the data owner n and the refund
-        paymentSettled(dataownerm, "The data owner m has been penalized.");
+        paymentSettled(dataownerm, "The DOm has been punished.");
         dataownerms[dataownerm].status = DOmStatus.RequestCompleted;
     }	
 }
