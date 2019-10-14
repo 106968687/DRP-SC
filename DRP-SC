@@ -24,20 +24,20 @@ contract DataResourceProtectionSC{
     event DOmAdded(address DataOwnermAddress, string DataProduct, string DataNotes);
     event DOmRemoved(address DOmAddress);
     event StatusChanged(string Status);
-    event DOmPaid(address dataownerm, string info);    
-	event DOnDeposited(string info,address dataownerm);	
+    event DOmPaid(address DOm, string info);    
+	event DOnDeposited(string info,address DOm);	
     event tokenxGeneratedforABR(address arbitration, bytes32 tokenx, uint timestamp, uint duration);
 	event tokenyGeneratedforABR(address arbitration, bytes32 tokeny, uint timestamp, uint duration);   
-    event accessToMarket(address dataownerm);
-    event disputeOfDataForSale(address dataownerm, string info);
-    event dataRefused(address dataownerm, string info);
-    event requestCompleted(address dataownerm, string info);	
-    event ABRIsVerifyingforDOmData(address dataownerm, string info, bytes32 tokenx, bytes32 tokeny);
+    event accessToMarket(address DOm, string info);
+    event disputeOfDataForSale(address DOm, string info);
+    event dataRefused(address DOm, string info);
+    event requestCompleted(address DOm, string info);	
+    event ABRIsVerifyingforDOmData(address DOm, string info, bytes32 tokenx, bytes32 tokeny);
     event penaltyDone(string info);
-	event refundDone(address dataownerm);
-	event DOmDataSimilar(address dataownerm, string info);		
-    event paymentSettled(address dataownerm, string info);
-    event refundBasedonDOmRequest(string info, address dataownerm);	
+	event refundDone(address DOm, string info);
+	event DOmDataSimilar(address DOm, string info);		
+    event paymentSettled(address DOm, string info);
+    event refundBasedonDOmRequest(string info, address DOm);	
   
     struct DOm {
 		address dataownerm;
@@ -173,9 +173,9 @@ contract DataResourceProtectionSC{
         require (dataownerms[dataownerm].status == DOmStatus.DOmPaid || dataownerms[dataownerm].status == DOmStatus.ABRReceivedToken);
 		if(dataownerms[dataownerm].status == DOmStatus.DOmPaid)//No comment
         {          
-		    accessToMarket(dataownerm);
+		   	accessToMarket(dataownerm,"The data-for-sale of access-to-market");
             dataownerms[dataownerm].status = DOmStatus.SuccessfulEnterMarket;
-            DOmRefund(dataownerm);		  		  
+			DOmRefund(dataownerm);			
         }
         else if(dataownerms[dataownerm].status == DOmStatus.ABRReceivedToken)
 		{		    
@@ -192,7 +192,7 @@ contract DataResourceProtectionSC{
 		   Settlement(dataownerm);           
         }
         else{//the data is not similar
-          accessToMarket(dataownerm);
+          accessToMarket(dataownerm,"The data-for-sale of access-to-market");
 		  dataownerms[dataownerm].status = DOmStatus.SuccessfulEnterMarket;
 		  Penalty(dataownerm);		  
         }
@@ -204,7 +204,7 @@ contract DataResourceProtectionSC{
 		DOnaddress.transfer(x*2);//refund the data owner n
 		ABRaddress.transfer(x);//the arbitration institution receives the fine
 		penaltyDone("The DOn has been penalized.");
-        refundDone(dataownerm);                        
+        refundDone(dataownerm,"The deposit paid by DOm has been returned.");                        
 	} 	
 	function Settlement(address dataownerm) internal{//the smart contract internal call
         require(dataownerms[dataownerm].status == DOmStatus.DataRefused);
